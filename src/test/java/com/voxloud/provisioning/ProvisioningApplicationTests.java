@@ -10,11 +10,11 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles("test")
 class ProvisioningApplicationTests {
 
-//	@Test
-//	void contextLoads() {
-//	}
-
-	public static void main(String[] args) {
-		SpringApplication.run(ProvisioningApplicationTests.class, args);
+	@Test
+	void contextLoads() {
 	}
+
+//	public static void main(String[] args) {
+//		SpringApplication.run(ProvisioningApplicationTests.class, args);
+//	}
 }

@@ -1,127 +1,222 @@
-![Voxloud Logo](https://www.voxloud.com/wp-content/uploads/2020/07/voxloud_logo_@1x.png)
+![Architecture Diagram](https://www.voxloud.com/wp-content/uploads/2020/07/voxloud_logo_@1x.png)
 
-# Provisioning server #
+# 📞 VoIP Provisioning Server
+[![Java](https://img.shields.io/badge/Java-21-blue)](https://openjdk.org/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.4-brightgreen)](https://spring.io/projects/spring-boot)
+[![H2 Database](https://img.shields.io/badge/H2-Database-orange)](https://www.h2database.com/)
 
-## Context ##
-Provisioning, in the context of VoIP and other telecommunication, means providing an automated process to make a
-device able to connect and configure itself to be enabled to make and receive calls. This normally happens when the
-device is plugged and boots up, connecting to a central server that releases the needed configuration.
-The scope of this application is to create a simple provisioning server that is able to generate dynamically the
-needed configuration for every device type.
+Automated VoIP device configuration server that dynamically generates device-specific configuration files for Desk and Conference phones, with support for real-time configuration overrides.
 
-## Requirements ##
-There are two device types in the system:
+---
 
-- Desk: used on office desks
-- Conference: used in conference rooms
+## 🚀 Features
+✅ **Device-Specific Configuration**  
+- Property files for Desk phones
+- JSON configurations for Conference phones
 
-When users connect these devices to the network, they should automatically get their configuration from server and
-be enabled to make and receive phone calls. They are different physical devices thus they are using different configuration files.
-What they have in common is that, when booting, they perform the following HTTP request to the server, putting their MAC
-address in the URL:
+✅ **Real-Time Overrides**  
+- Database-stored override fragments (supports both property and JSON formats)
+- Seamless merging of default and override configurations
 
+✅ **Error Handling**  
+- HTTP 404 for unknown devices
+- Graceful fragment parsing with error logging
+
+✅ **Tech Stack**  
+- Spring Boot 3.4.4
+- Jakarta EE 10
+- H2 In-Memory Database
+- Java 21
+
+---
+
+## 🏗️ Architecture
+
+### Key Components
+#### 1. Controller Layer
+- `ProvisioningController`: Handles HTTP requests for device provisioning
+- Responsible for input validation, content type determination, and response generation
+
+#### 2. Service Layer
+- `ProvisioningService`: Coordinates the process of finding devices and generating configurations
+- Handles business logic and delegates to appropriate components
+
+#### 3. Repository Layer
+- `DeviceRepository`: JPA repository for accessing device data
+- Provides methods to retrieve device information by MAC address
+
+#### 4. Provisioning Strategy
+- `DeviceProvisioner`: Interface defining the contract for device-specific provisioning
+- `DeskPhoneProvisioner`: Implementation for desk phones (property file format)
+- `ConferencePhoneProvisioner`: Implementation for conference phones (JSON format)
+- `DeviceProvisionerFactory`: Factory that selects the appropriate provisioner based on device model
+
+#### 5. Configuration
+- `ProvisioningConfig`: Holds application-wide configuration properties
+- Provides access to domain, port, and codec settings
+
+```mermaid
+flowchart TB
+    Controller[ProvisioningController] --> Service[ProvisioningService]
+    Service --> Repository[DeviceRepository]
+    Service --> Strategy[DeviceProvisioner Strategy]
+    Strategy --> Desk[DeskPhoneProvisioner]
+    Strategy --> Conference[ConferencePhoneProvisioner]
+    Repository --> Database[(H2 Database)]
 ```
-GET /api/v1/provisioning/aa-bb-cc-11-22-33
+
+### Data Flow
+
+1. Device sends HTTP GET request to `/api/v1/provisioning/{macAddress}`
+2. Controller validates the MAC address format
+3. Service looks up the device in the repository
+4. If found, the factory selects the appropriate provisioner based on device model
+5. Provisioner generates the configuration, applying any override fragments
+6. Controller determines the content type and returns the configuration
+```mermaid
+sequenceDiagram
+    participant Phone as VoIP Phone
+    participant Server as Spring Boot Server
+    participant DB as H2 Database
+    participant Config as application.properties
+
+    Phone->>Server: HTTP GET /config/{MAC Address}
+    Server->>DB: Fetch device credentials
+    DB-->>Server: Return credentials
+    Server->>Config: Get default settings
+    Config-->>Server: Return domain/port/codecs
+    Server->>DB: Check for override fragments
+    DB-->>Server: Return overrides
+    Server->>Server: Merge configurations
+    Server->>Phone: Return final config
 ```
 
-The server stores a table that contains all the phones in the inventory. If a phone is found in the inventory then its
-configuration file should be dynamically generated, according to the phone model configuration format. If a phone is not
-found in the inventory, the server should deny the provisioning request, returning a proper HTTP error code.
-As an additional requirement, the system should be able to support new device type provisioning with minimal code/configuration change.
+### Extension Points
+1. **New Device Types**
+  - Add new enum value to `DeviceModel`
+  - Create new `DeviceProvisioner` implementation
+  - Automatically registered via Spring component scanning
 
-### Configuration file formats ###
-The two device types use the following configuration file formats:
+2. **Configuration Sources**
+  - Extend `ProvisioningConfig` for new parameters
+  - Add new override parsers for custom formats
 
-#### Desk: Property file ####
+---
 
+## 📦 Project Structure
+```plaintext
+.
+├── src/main/java/com/voxloud/provisioning
+│   ├── controller/      # REST API endpoints
+│   ├── entity/          # JPA entities
+│   ├── repository/      # Database layer
+│   ├── service/         # Business logic
+│   │   ├── strategy/    # Provisioning strategies
+│   │   └── factory/     # Provisioner factory
+│   └── exception/       # Custom exceptions
+└── src/main/resources
+    ├── application.properties  # Configuration
+    └── data.sql         # Sample device data
 ```
-username=john         # From database
-password=doe          # From database
-domain=sip.voxloud.com # From application.properties
-port=5060             # From application.properties
-codecs=G711,G729,OPUS # From application.properties
-```
 
-#### Conference: JSON file ####
+---
 
-```json
-{
-  "username" : "john",              // From database
-  "password" : "doe",               // From database
-  "domain" : "sip.voxloud.com",      // From application.properties
-  "port" : "5060",                  // From application.properties
-  "codecs" : ["G711","G729","OPUS"] // from application.properties
+## ⚙️ Implementation Details
+### Strategy Pattern Implementation
+```java
+// DeviceProvisioner.java
+public interface DeviceProvisioner {
+    String generateConfiguration(Device device, Properties defaults);
+}
+
+// DeskPhoneProvisioner.java
+@Component
+public class DeskPhoneProvisioner implements DeviceProvisioner {
+    @Override
+    public String generateConfiguration(Device device, Properties defaults) {
+        // Property file generation logic
+    }
+}
+
+// ConferencePhoneProvisioner.java
+@Component
+public class ConferencePhoneProvisioner implements DeviceProvisioner {
+    @Override
+    public String generateConfiguration(Device device, Properties defaults) {
+        // JSON generation logic
+    }
 }
 ```
 
-The final configuration file should be created by taking data from database and from configuration properties contained
-in `provisioning.*` namespace in `application.properties`
+### Configuration Merging Strategy
+1. Base properties from `application.properties`
+2. Database credentials override
+3. Override fragment applies last (supports both formats)
 
-### Override fragment ###
-In addition to standard provisioning described above, there should be the possibility to manually override final
-configuration file, by providing a file fragment in the database (it should be Property or JSON file) that can replace or add some configuration
-properties at runtime. Let's see the two cases:
+---
 
-#### Desk: Property file ####
-```
-username=john                # From database
-password=doe                 # From database
-domain=sip.anotherdomain.com # From override fragment (replaced application.properties)
-port=5161                    # From override fragment (replaced application.properties)
-codecs=G711,G729,OPUS        # From application.properties
-timeout=10                   # From override fragment (added)
-```
-where the override fragment in the database is:
+## 🛠️ Quick Start
+1. **Clone the repository**
+```bash
+git clone https://github.com/rhadiwib/provisioning-hw.git
+cd provisioning-hw
 ```
 
-domain=sip.anotherdomain.com
-port=5161
-timeout=10
+2. **Build and run**
+```bash
+mvn spring-boot:run
 ```
 
-#### Conference: JSON file ####
+3. **Access H2 Console**  
+   URL: http://localhost:8080/h2-console  
+   JDBC URL: `jdbc:h2:mem:test`  
+   User: `sa` / Password: `password`
 
-```json
+---
+
+## 🧪 Testing
+Run the test suite:
+```bash
+./results.sh
+```
+
+Sample output:
+```plaintext
+--- Desk phone without override fragment ---
+username=john
+password=doe
+domain=sip.voxloud.com
+port=5060
+codecs=G711,G729,OPUS
+
+--- Conference phone with override fragment ---
 {
-  "username" : "john",                // From database
-  "password" : "doe",                 // From database
-  "domain" : "sip.anotherdomain.com", // From override fragment (replaced application.properties)
-  "port" : "5161",                    // From override fragment (replaced application.properties)
-  "codecs" : ["G711","G729","OPUS"],  // From application.properties
-  "timeout" : 10                      // From override fragment (added)
+  "username": "eric",
+  "password": "blue",
+  "domain": "sip.anotherdomain.com",
+  "port": "5161",
+  "codecs": ["G711", "G729", "OPUS"],
+  "timeout": 10
 }
 ```
-where the override fragment in the database is:
+
+please refer to `demo` directory
+
+---
+
+## 📝 Configuration
+`application.properties` contains:
+```properties
+provisioning.domain=sip.voxloud.com
+provisioning.port=5060
+provisioning.codecs=G711,G729,OPUS
 ```
 
-{
-  "domain" : "sip.anotherdomain.com",
-  "port" : "5161",
-  "timeout" : 10 
-}
-``` 
+---
 
-## How to access database ###
-Database is automatically recreated at startup with sample data. You can connect to [H2 Console](http://localhost:8080/h2-console), using the following parameters:
+## ⚠️ Error Handling
+- **404 Not Found**: Invalid MAC address
+- **400 Bad Request**: Malformed override fragment
+- **500 Internal Error**: Database connection issues
 
-- JDBC URL: `jdbc:h2:mem:test`
-- User Name: `sa`
-- Password: `password`
-
-## Project delivery
-The final output of the project should include the following artifacts:
-
-- Complete `ProvisioningController` to handle provisioning requests according to the given request format
-- Complete `ProvisioningServiceImpl` implementation in order to support provisioning requests. Create all the necessary
-  classes to realize the best possible implementation, considering OOP principles
-- Make `ProvisioningServiceImpl` able to support override fragments for some devices, according to the requirements
-- Tests for the implemented classes
-
-All the code should be pushed in __**your public Git repository**__(Bitbucket, Github, etc), since you can't push branches on this repository.
-These are the steps:
-
-1. You create a public fork of this project on your Bitbucket account clicking [here](https://bitbucket.org/voxloud/provisioning-hw/fork) or you clone it and push to your account if you use other Git platforms (Github, Gitlab, etc)
-2. You commit and push to your fork master branch
-3. You share the (public) repository link with the reviewer when development is completed
-
-Note: The system will be tested by the reviewer on the sample data by running `results.sh`
+---
