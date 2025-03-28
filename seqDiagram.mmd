@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant Phone as VoIP Phone
+    participant Server as Spring Boot Server
+    participant DB as H2 Database
+    participant Config as application.properties
+
+    Phone->>Server: HTTP GET /config/{MAC Address}
+    
+    Server->>DB: Fetch user credentials (username, password)
+    DB-->>Server: Return user credentials
+    
+    Server->>Config: Get default settings (domain, port, codec)
+    Config-->>Server: Return default settings
+    
+    Server->>DB: Check for override fragments
+    DB-->>Server: Return override values (if any)
+    
+    Server->>Server: Apply overrides (modify/add settings)
+    
+    Server->>Phone: Return final configuration file
