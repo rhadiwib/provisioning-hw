@@ -110,7 +110,7 @@ sequenceDiagram
 ├── src/main/java/com/voxloud/provisioning
 │   ├── controller/      # REST API endpoints
 │   ├── entity/          # JPA entities
-│   ├── provisioner/     # Provisioner factory
+│   ├── provisioner/     # Provisioner Strategy
 │   ├── repository/      # Database layer
 │   ├── service/         # Business logic
 │   └── exception/       # Custom exceptions
