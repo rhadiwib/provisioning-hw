@@ -5,7 +5,8 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.4-brightgreen)](https://spring.io/projects/spring-boot)
 [![H2 Database](https://img.shields.io/badge/H2-Database-orange)](https://www.h2database.com/)
 
-Automated VoIP device configuration server that dynamically generates device-specific configuration files for Desk and Conference phones, with support for real-time configuration overrides.
+## 📄 Context
+Provisioning, in the context of VoIP and other telecommunication, means providing an automated process to make a device able to connect and configure itself to be enabled to make and receive calls. This normally happens when the device is plugged and boots up, connecting to a central server that releases the needed configuration. The scope of this application is to create a simple provisioning server that is able to generate dynamically the needed configuration for every device type. Automated VoIP device configuration server that dynamically generates device-specific configuration files for Desk and Conference phones, with support for real-time configuration overrides.
 
 ---
 
